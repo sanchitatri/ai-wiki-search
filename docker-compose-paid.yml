@@ -1,0 +1,26 @@
+services:
+  backend-paid:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.paid
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL}
+    volumes:
+      - ./demo-data:/demo-data:ro
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.python
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+    depends_on:
+      - backend-paid
+    restart: unless-stopped

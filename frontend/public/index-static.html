@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="AI Internal Wiki Search - Ask questions, get instant answers" />
+    <title>AI Internal Wiki Search</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .search-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        
+        .search-button {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            background-color: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .search-button:hover {
+            background-color: #5a6fd8;
+        }
+        
+        .search-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .examples {
+            margin-top: 20px;
+        }
+        
+        .examples p {
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .example-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .example-button {
+            padding: 8px 12px;
+            font-size: 14px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        
+        .example-button:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .result {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .result h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .result p {
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+        
+        .sources {
+            margin-top: 20px;
+        }
+        
+        .sources h4 {
+            margin-bottom: 10px;
+        }
+        
+        .source-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .source-tag {
+            padding: 5px 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 15px;
+            font-size: 14px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: white;
+            opacity: 0.7;
+        }
+        
+        .loading {
+            display: none;
+        }
+        
+        .loading.show {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🧠 AI Internal Wiki Search</h1>
+            <p>Ask questions, get instant answers from company knowledge</p>
+        </div>
+
+        <!-- Search Interface -->
+        <div class="search-card">
+            <form id="searchForm">
+                <input 
+                    type="text" 
+                    id="questionInput"
+                    class="search-input"
+                    placeholder="Ask a question... (e.g., What's our vacation policy?)"
+                    required
+                />
+                <button type="submit" class="search-button" id="searchButton">
+                    Ask Question
+                </button>
+            </form>
+
+            <!-- Example Questions -->
+            <div class="examples" id="examples">
+                <p>Try these example questions:</p>
+                <div class="example-buttons">
+                    <button class="example-button" onclick="setQuestion('What\'s our vacation policy?')">What's our vacation policy?</button>
+                    <button class="example-button" onclick="setQuestion('How do I request time off?')">How do I request time off?</button>
+                    <button class="example-button" onclick="setQuestion('What are the remote work guidelines?')">What are the remote work guidelines?</button>
+                    <button class="example-button" onclick="setQuestion('How do I submit expense reports?')">How do I submit expense reports?</button>
+                    <button class="example-button" onclick="setQuestion('What\'s the process for performance reviews?')">What's the process for performance reviews?</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div class="error" id="errorMessage" style="display: none;"></div>
+
+        <!-- Result Display -->
+        <div class="result" id="result" style="display: none;"></div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Powered by AI Wiki Search System</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        
+        function setQuestion(question) {
+            document.getElementById('questionInput').value = question;
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        function showResult(data) {
+            const resultDiv = document.getElementById('result');
+            const examplesDiv = document.getElementById('examples');
+            
+            resultDiv.innerHTML = `
+                <h3>Question:</h3>
+                <p style="font-style: italic; margin-bottom: 20px;">${data.question || document.getElementById('questionInput').value}</p>
+                
+                <h3>Answer:</h3>
+                <p>${data.answer}</p>
+                
+                ${data.sources && data.sources.length > 0 ? `
+                    <div class="sources">
+                        <h4>📄 Sources:</h4>
+                        <div class="source-tags">
+                            ${data.sources.map(source => `<span class="source-tag">${source.source}</span>`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+            
+            resultDiv.style.display = 'block';
+            examplesDiv.style.display = 'none';
+        }
+        
+        function hideResult() {
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('examples').style.display = 'block';
+        }
+        
+        document.getElementById('searchForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const question = document.getElementById('questionInput').value.trim();
+            if (!question) return;
+            
+            const searchButton = document.getElementById('searchButton');
+            searchButton.disabled = true;
+            searchButton.textContent = 'Searching...';
+            
+            hideResult();
+            
+            try {
+                const response = await fetch(`${API_URL}/api/ask`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        n_results: 5
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                showResult(data);
+                document.getElementById('questionInput').value = '';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError('An error occurred. Please try again. Make sure the backend is running at ' + API_URL);
+            } finally {
+                searchButton.disabled = false;
+                searchButton.textContent = 'Ask Question';
+            }
+        });
+        
+        // Test backend connection on page load
+        window.addEventListener('load', async function() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (response.ok) {
+                    console.log('Backend is connected and ready!');
+                } else {
+                    console.warn('Backend health check failed');
+                }
+            } catch (error) {
+                console.warn('Backend is not available:', error.message);
+            }
+        });
+    </script>
+</body>
+</html>
