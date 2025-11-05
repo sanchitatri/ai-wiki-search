@@ -1,24 +1,41 @@
 import chromadb
 import os
 from typing import List, Dict, Any, Tuple
-import google.generativeai as genai
+from openai import AzureOpenAI
 
 class RAGEngine:
     def __init__(self):
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise RuntimeError("GEMINI_API_KEY is not set")
-        genai.configure(api_key=api_key)
-
+        # Check for Azure OpenAI credentials
+        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
+        azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
+        
+        if not azure_endpoint or not azure_api_key:
+            raise RuntimeError("AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY must be set")
+        
+        # Initialize Azure OpenAI client
+        self.azure_client = AzureOpenAI(
+            api_version=azure_api_version,
+            azure_endpoint=azure_endpoint,
+            api_key=azure_api_key,
+        )
+        self.azure_deployment = azure_deployment
+        self.azure_embedding_deployment = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-3-large")
+        print("✅ Using Azure OpenAI")
+        
         self.chroma_client = chromadb.PersistentClient(path="./chroma_db")
         self.collection = self.chroma_client.get_collection("documents")
     
     def retrieve(self, question: str, n_results: int = 3) -> List[Dict[str, Any]]:
         """Retrieve relevant documents using vector similarity"""
         try:
-            # Generate embedding for the question using Gemini embeddings
-            embed_response = genai.embed_content(model="models/text-embedding-004", content=question)
-            question_embedding = embed_response["embedding"] if isinstance(embed_response, dict) else embed_response.embedding
+            # Generate embedding for the question using Azure OpenAI
+            embed_response = self.azure_client.embeddings.create(
+                model=self.azure_embedding_deployment,
+                input=question
+            )
+            question_embedding = embed_response.data[0].embedding
             
             # Ensure we have the latest collection handle (in case it was recreated during indexing)
             self.collection = self.chroma_client.get_collection("documents")
@@ -45,14 +62,14 @@ class RAGEngine:
             return []
     
     def generate_answer(self, question: str, sources: List[Dict[str, Any]]) -> str:
-        """Generate answer using Gemini 1.5"""
+        """Generate answer using Azure OpenAI"""
         if not sources:
             return "I couldn't find relevant information to answer your question. Please try rephrasing your question or check if the documents have been indexed."
         
         # Prepare context from sources
         context = "\n\n".join([f"Source: {source['source']}\nContent: {source['content']}" for source in sources])
         
-        # Create prompt for GPT-4
+        # Create prompt
         prompt = f"""Based on the following context from company documents, please answer the question. Be specific and cite sources when possible.
 
 Context:
@@ -63,11 +80,24 @@ Question: {question}
 Please provide a clear, helpful answer based on the context above. If the context doesn't contain enough information to fully answer the question, please say so and provide what information is available."""
 
         try:
-            # Use a configurable model name; default to one supported by your key list
-            model_name = os.getenv("GEMINI_MODEL", "models/gemini-2.5-flash")
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
-            return response.text if hasattr(response, "text") else str(response)
+            # Use Azure OpenAI
+            response = self.azure_client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant that answers questions based on provided context.",
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+                max_tokens=int(os.getenv("AZURE_OPENAI_MAX_TOKENS", "4096")),
+                temperature=float(os.getenv("AZURE_OPENAI_TEMPERATURE", "1.0")),
+                top_p=float(os.getenv("AZURE_OPENAI_TOP_P", "1.0")),
+                model=self.azure_deployment,
+            )
+            return response.choices[0].message.content
         except Exception as e:
             print(f"Error generating answer: {e}")
             return "I encountered an error while generating the answer. Please try again."

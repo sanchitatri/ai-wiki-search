@@ -81,6 +81,5 @@ Thumbs.db
 # Project-specific excludes
 FREE_VS_PAID_GUIDE.md
 SWITCHING_GUIDE.md
-README.md
 quick_switch.sh
 switch_version.py

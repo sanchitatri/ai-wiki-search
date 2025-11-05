@@ -3,14 +3,26 @@ import glob
 from typing import List, Dict, Any
 import chromadb
 import hashlib
-import google.generativeai as genai
+from openai import AzureOpenAI
 
 class IndexingPipeline:
     def __init__(self):
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise RuntimeError("GEMINI_API_KEY is not set")
-        genai.configure(api_key=api_key)
+        # Check for Azure OpenAI credentials
+        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
+        
+        if not azure_endpoint or not azure_api_key:
+            raise RuntimeError("AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY must be set")
+        
+        # Initialize Azure OpenAI client
+        self.azure_client = AzureOpenAI(
+            api_version=azure_api_version,
+            azure_endpoint=azure_endpoint,
+            api_key=azure_api_key,
+        )
+        self.azure_embedding_deployment = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-3-large")
+        print("✅ Using Azure OpenAI for embeddings")
 
         self.chroma_client = chromadb.PersistentClient(path="./chroma_db")
         self.collection = self.chroma_client.get_or_create_collection(
@@ -81,25 +93,26 @@ class IndexingPipeline:
         return chunks
     
     def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings using Gemini text-embedding-004"""
+        """Generate embeddings using Azure OpenAI"""
         embeddings: List[List[float]] = []
         batch_size = 100  # Process in batches to avoid rate limits
 
         for i in range(0, len(texts), batch_size):
             batch = texts[i:i + batch_size]
             try:
-                # Gemini API currently supports per-item embed calls; loop batch
+                # Use Azure OpenAI embeddings
                 batch_embeddings: List[List[float]] = []
-                for item in batch:
-                    embed_resp = genai.embed_content(model="models/text-embedding-004", content=item)
-                    vec = embed_resp["embedding"] if isinstance(embed_resp, dict) else embed_resp.embedding
-                    batch_embeddings.append(vec)
+                # Azure OpenAI supports batch embedding
+                response = self.azure_client.embeddings.create(
+                    model=self.azure_embedding_deployment,
+                    input=batch
+                )
+                batch_embeddings = [item.embedding for item in response.data]
                 embeddings.extend(batch_embeddings)
             except Exception as e:
                 print(f"Error generating embeddings for batch {i//batch_size + 1}: {e}")
-                # Fallback: create zero embeddings with typical Gemini embedding size 768 or 3072.
-                # Conservatively choose 768 to avoid excessive storage; adjust if needed.
-                fallback_dim = 768
+                # Fallback: create zero embeddings with Azure OpenAI embedding size (3072 dimensions)
+                fallback_dim = 3072
                 batch_embeddings = [[0.0] * fallback_dim for _ in batch]
                 embeddings.extend(batch_embeddings)
 
@@ -127,7 +140,7 @@ class IndexingPipeline:
     def run(self, documents_path: str) -> Dict[str, Any]:
         """Run the complete indexing pipeline"""
         print("=" * 50)
-        print("Starting Paid Indexing Pipeline")
+        print("Starting Azure OpenAI Indexing Pipeline")
         print("=" * 50)
         
         # Step 1: Load documents
@@ -175,7 +188,7 @@ class IndexingPipeline:
         print(f"Added {len(all_chunks)} documents to vector database")
         
         print("\n" + "=" * 50)
-        print("Paid Indexing Complete!")
+        print("Azure OpenAI Indexing Complete!")
         print("=" * 50)
         
         return {

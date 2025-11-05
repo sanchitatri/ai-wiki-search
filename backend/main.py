@@ -5,8 +5,12 @@ from embedding_pipeline import IndexingPipeline
 from rag_engine import RAGEngine
 import uvicorn
 import os
+from dotenv import load_dotenv
 
-app = FastAPI(title="AI Wiki Search - Paid Version", version="1.0.0")
+# Load environment variables from .env file
+load_dotenv()
+
+app = FastAPI(title="IntelliFind - The Company's Smart Answer Engine", version="1.0.0")
 
 # CORS configuration
 origins = [
@@ -37,16 +41,21 @@ class IndexRequest(BaseModel):
 async def startup_event():
     global rag_engine
     try:
-        # Check if Gemini API key is available
-        if not os.getenv("GEMINI_API_KEY"):
-            print("⚠️  GEMINI_API_KEY not found. Please set it in your environment.")
-            print("💠 This version requires Google Gemini API key (chat + embeddings).")
+        # Check for Azure OpenAI credentials
+        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        
+        # Check if Azure OpenAI is configured
+        if not azure_api_key or not azure_endpoint:
+            print("⚠️  Azure OpenAI not configured. Please set:")
+            print("   - AZURE_OPENAI_API_KEY")
+            print("   - AZURE_OPENAI_ENDPOINT")
             return
         
         # Initialize the RAG engine
         rag_engine = RAGEngine()
-        print("✅ Paid RAG Engine initialized successfully!")
-        print("💠 Using Google Gemini (gemini-1.5-pro + text-embedding-004)!")
+        print("✅ IntelliFind RAG Engine initialized successfully!")
+        print("💠 Using Azure OpenAI!")
     except Exception as e:
         print(f"❌ Failed to initialize RAG engine: {e}")
         rag_engine = None
@@ -56,20 +65,20 @@ async def health_check():
         return {
             "status": "healthy",
             "rag_engine": "initialized" if rag_engine else "not initialized",
-            "model_type": "paid_gemini_models"
+            "model_type": "azure_openai"
         }
 
 @app.post("/api/ask")
 async def ask_question(request: AskRequest):
     if not rag_engine:
-        raise HTTPException(status_code=503, detail="RAG engine not initialized. Please check OPENAI_API_KEY.")
+        raise HTTPException(status_code=503, detail="RAG engine not initialized. Please check AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT.")
     
     try:
         answer, sources = rag_engine.ask(request.question, request.n_results)
         return {
             "answer": answer,
             "sources": sources,
-            "model_type": "paid_gemini_models"
+            "model_type": "azure_openai"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -95,7 +104,7 @@ async def get_stats():
         stats = rag_engine.get_stats()
         return {
             "total_documents": stats.get("total_documents", 0),
-            "model_type": "paid_gemini_models"
+            "model_type": "azure_openai"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
