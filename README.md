@@ -136,9 +136,8 @@ ai-wiki-search/
 │   └── benefits.md            # Employee benefits
 │
 ├── docker-compose-paid.yml    # Docker Compose configuration
-├── AZURE_OPENAI_SETUP.md     # Detailed Azure OpenAI setup guide
-├── QUICK_START_AZURE.md       # Quick start guide
-└── README.md                  # This file
+└── README.md                  #
+
 ```
 
 ##  Commands
@@ -239,40 +238,6 @@ Get indexing statistics
 }
 ```
 
-## Troubleshooting
-
-### Azure OpenAI 403 Error
-If you see `403 - Public access is disabled`:
-- Go to Azure Portal → Your Azure OpenAI resource
-- Navigate to **Networking**
-- Enable **Public network access** or configure private endpoints
-- Ensure your API key has proper permissions
-
-### Documents Not Found
-- Make sure documents are indexed: `POST /api/index`
-- Check that the `documents_path` is correct
-- Verify documents are in supported formats: `.txt`, `.md`, `.pdf`, `.docx`
-
-### System Won't Start
-- Check Docker is running: `docker --version`
-- Check ports are available: 3000 and 8000
-- View logs: `docker-compose -f docker-compose-paid.yml logs`
-
-### API Not Responding
-- Check backend logs: `docker logs ai-wiki-search-backend-paid-1`
-- Test health endpoint: `curl http://localhost:8000/health`
-- Verify Azure OpenAI credentials are set correctly
-
-### Embedding Errors
-- Verify the embedding deployment exists in Azure Portal
-- Check that the deployment name matches `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`
-- Ensure the embedding model is deployed and active
-
-##  Documentation
-
-- **[AZURE_OPENAI_SETUP.md](AZURE_OPENAI_SETUP.md)**: Detailed setup instructions for Azure OpenAI
-- **[QUICK_START_AZURE.md](QUICK_START_AZURE.md)**: Quick start guide
-
 ## 🎯 Key Benefits
 
 - **Accurate Answers**: RAG architecture ensures answers are based on your documents
@@ -303,10 +268,6 @@ export AZURE_OPENAI_API_KEY="your-key"
 2. Index them: `POST /api/index` with the correct path
 3. Start asking questions!
 
-## 📝 License
-
-MIT License - Free to use for internal company use
-
 ## Success Metrics
 
 This application demonstrates:
@@ -315,6 +276,5 @@ This application demonstrates:
 - ✅ Vector search with ChromaDB
 - ✅ Simple, reliable deployment
 - ✅ Clean, modern interface
-- ✅ Production-ready architecture
+  
 
-**Ready to use!** 🚀
